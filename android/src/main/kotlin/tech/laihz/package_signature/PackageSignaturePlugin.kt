@@ -30,20 +30,39 @@ class PackageSignaturePlugin : FlutterPlugin, PackagePortal {
 
     @SuppressLint("PackageManagerGetSignatures")
     override fun appSignature(): ByteArray? {
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-            val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
-            return if(packageInfo.signatures.isEmpty()) {
+        val packageInfo: PackageInfo?
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageInfo = context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong())
+            )
+            val signers = packageInfo.signingInfo.apkContentsSigners
+            return if (signers.isEmpty()) {
                 null
             } else {
-                packageInfo.signatures.first().toByteArray()
+                signers.first().toByteArray()
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo = context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_SIGNING_CERTIFICATES
+            )
+            val signers = packageInfo.signingInfo.apkContentsSigners
+            return if (signers.isEmpty()) {
+                null
+            } else {
+                signers.first().toByteArray()
             }
         } else {
-            val packageInfo: PackageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-            val signer = packageInfo.signingInfo.apkContentsSigners
-            return if(signer.isEmpty()) {
+            packageInfo = @Suppress("DEPRECATION") context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_SIGNATURES
+            )
+            val signers = @Suppress("DEPRECATION") packageInfo.signatures
+            return if (signers.isEmpty()) {
                 null
-            }else {
-                signer.first().toByteArray()
+            } else {
+                signers.first().toByteArray()
             }
         }
     }
